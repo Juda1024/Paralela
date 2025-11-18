@@ -1,88 +1,141 @@
 import os
+import time
 import requests
 import random
-import time
+import glob
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 
-# Configuramos los headers para parecer un navegador real evitando bloqueos
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+# --- CONFIGURACIÓN ---
+META_TOTAL = 100
+CARPETA_SALIDA = "dataset_browser"
+
+TEMAS_VARIADOS = [
+    "tropical beach", "colorful abstract", 
+    "underwater coral","street art graffiti", "hot air balloons", "festival colors", "vibrant flowers", "neon car", "technology lights",
+    "sunset mountains", "stained glass", "macro eye", "liquid color"
+]
+
+RESOLUCIONES = {
+    "4K": 3840,
+    "2K": 2560,
+    "FHD": 1920,
+    "HD": 1280
 }
 
-def obtener_url_picsum(w, h, seed):
-    return f"https://picsum.photos/{w}/{h}?random={seed}"
+def iniciar_navegador():
+    options = webdriver.ChromeOptions()
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-notifications")
+    # options.add_argument("--headless") # Descomenta si no quieres ver el navegador
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    return driver
 
-def obtener_url_loremflickr(w, h, seed):
-    # LoremFlickr usa palabras clave para variar, usamos 'all' o 'technology,nature'
-    return f"https://loremflickr.com/{w}/{h}/all?lock={seed}"
+def completar_dataset():
+    if not os.path.exists(CARPETA_SALIDA):
+        os.makedirs(CARPETA_SALIDA)
+    
+    # 1. CONTAR LO QUE YA EXISTE
+    # Buscamos todos los archivos .jpg en la carpeta
+    archivos_existentes = glob.glob(os.path.join(CARPETA_SALIDA, "*.jpg"))
+    cantidad_actual = len(archivos_existentes)
+    
+    faltantes = META_TOTAL - cantidad_actual
+    
+    print(f"--- ESTADO ACTUAL ---")
+    print(f"Tienes: {cantidad_actual} imágenes.")
+    print(f"Meta:   {META_TOTAL} imágenes.")
+    
+    if faltantes <= 0:
+        print("¡Felicidades! Ya tienes el dataset completo (o más). No hace falta descargar nada.")
+        return
 
-def descargar_dataset_multiserver(cantidad_objetivo=100, carpeta_salida="dataset_imagenes"):
-    if not os.path.exists(carpeta_salida):
-        os.makedirs(carpeta_salida)
+    print(f"--> Faltan {faltantes} imágenes. Iniciando búsqueda para completarlas...")
+    print("---------------------")
 
-    resoluciones_base = [
-        (1280, 720),   # HD
-        (1920, 1080),  # Full HD
-        (2560, 1440),  # 2K
-        (3840, 2160)   # 4K
-    ]
-
-    # Fuentes disponibles
-    fuentes = ["Picsum", "LoremFlickr"]
-
-    archivos_existentes = len([name for name in os.listdir(carpeta_salida) if name.endswith('.jpg')])
-    descargadas_exitosas = archivos_existentes
-
-    print(f"--- INICIANDO DESCARGA MULTI-SERVIDOR ---")
-    print(f"Imagenes actuales: {archivos_existentes}. Meta: {cantidad_objetivo}")
-    print("---")
-
-    while descargadas_exitosas < cantidad_objetivo:
+    driver = iniciar_navegador()
+    urls_encontradas = set()
+    
+    temas_por_usar = TEMAS_VARIADOS.copy()
+    random.shuffle(temas_por_usar)
+    
+    # 2. BUCLE DE BÚSQUEDA (Solo hasta encontrar los enlaces FALTANTES)
+    while len(urls_encontradas) < faltantes:
+        
+        if not temas_por_usar:
+            temas_por_usar = TEMAS_VARIADOS.copy()
+            random.shuffle(temas_por_usar)
+        
+        tema_actual = temas_por_usar.pop()
+        print(f"Buscando '{tema_actual}'... (Necesitamos {faltantes - len(urls_encontradas)} más)")
+        
         try:
-            # Configuración aleatoria de imagen
-            ancho, alto = random.choice(resoluciones_base)
-            if random.choice([True, False]): 
-                w_final, h_final = alto, ancho # Vertical
-            else: 
-                w_final, h_final = ancho, alto # Horizontal
+            driver.get(f"https://unsplash.com/s/photos/{tema_actual.replace(' ', '-')}")
+            time.sleep(3) 
 
-            seed = random.randint(1, 100000)
-            
-            # Selección de servidor aleatorio para balancear carga
-            servidor_actual = random.choice(fuentes)
-            
-            if servidor_actual == "Picsum":
-                url = obtener_url_picsum(w_final, h_final, seed)
-            else:
-                url = obtener_url_loremflickr(w_final, h_final, seed)
-
-            # Timeout extendido a 30s para resoluciones 4K
-            respuesta = requests.get(url, headers=HEADERS, stream=True, timeout=30)
-            
-            # LoremFlickr a veces redirige, requests lo maneja, pero verificamos la URL final
-            if respuesta.status_code == 200:
-                numero_img = descargadas_exitosas + 1
-                nombre_archivo = f"img_{numero_img:03d}_{w_final}x{h_final}.jpg"
-                ruta_completa = os.path.join(carpeta_salida, nombre_archivo)
-
-                with open(ruta_completa, 'wb') as f:
-                    for chunk in respuesta.iter_content(1024):
-                        f.write(chunk)
-                
-                descargadas_exitosas += 1
-                print(f"[OK] ({servidor_actual}) {w_final}x{h_final} - Total: {descargadas_exitosas}")
-                
-                # Pausa pequeña
+            # Scroll para ver más fotos
+            for _ in range(6):
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(1)
-            else:
-                print(f"[!] {servidor_actual} ocupado ({respuesta.status_code}). Probando otro...")
-                time.sleep(1)
+            
+            imagenes = driver.find_elements(By.CSS_SELECTOR, "img.I7OuT")
+            if not imagenes:
+                imagenes = driver.find_elements(By.TAG_NAME, "img")
 
+            for img in imagenes:
+                src = img.get_attribute("src")
+                if src and "images.unsplash.com" in src and "profile" not in src:
+                    base_url = src.split("?")[0]
+                    urls_encontradas.add(base_url)
+                    
+                    # Si ya tenemos suficientes enlaces para llenar el hueco, paramos
+                    if len(urls_encontradas) >= faltantes:
+                        break
+            
         except Exception as e:
-            print(f"[REINTENTO] Timeout o error de red. Cambiando servidor...")
-            time.sleep(2)
+            print(f"Error menor buscando: {e}")
+
+    driver.quit()
+    print(f"--- LINKS RECOLECTADOS. DESCARGANDO {len(urls_encontradas)} FOTOS ---")
+
+    # 3. DESCARGA CONTINUADA
+    # Empezamos a numerar desde donde nos quedamos (ej. si hay 56, la primera será la 57)
+    indice_inicial = cantidad_actual + 1
+    lista_urls = list(urls_encontradas)
+    random.shuffle(lista_urls) # Mezclar para variedad
+
+    for i, url_base in enumerate(lista_urls):
+        try:
+            numero_actual = indice_inicial + i
+            
+            # Si por alguna razón nos pasamos, paramos
+            if numero_actual > META_TOTAL:
+                break
+
+            nombre_res, ancho = random.choice(list(RESOLUCIONES.items()))
+            url_final = f"{url_base}?w={ancho}&q=85&fm=jpg&fit=max"
+            
+            print(f"Guardando img_{numero_actual:03d} ({nombre_res})...")
+            
+            respuesta = requests.get(url_final, timeout=10)
+            
+            if respuesta.status_code == 200:
+                nombre_archivo = f"img_{numero_actual:03d}_{nombre_res}.jpg"
+                ruta = os.path.join(CARPETA_SALIDA, nombre_archivo)
+                
+                with open(ruta, 'wb') as f:
+                    f.write(respuesta.content)
+            
+            time.sleep(0.2)
+            
+        except Exception as e:
+            print(f"Error descargando una imagen: {e}")
 
     print("---")
-    print(f"Proceso terminado. Tienes {descargadas_exitosas} imagenes.")
+    total_final = len(glob.glob(os.path.join(CARPETA_SALIDA, "*.jpg")))
+    print(f"¡Proceso finalizado! Ahora tienes {total_final} imágenes en total.")
 
 if __name__ == "__main__":
-    descargar_dataset_multiserver()
+    completar_dataset()
