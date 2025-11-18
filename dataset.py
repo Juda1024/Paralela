@@ -14,8 +14,7 @@ CARPETA_SALIDA = "dataset_browser"
 
 TEMAS_VARIADOS = [
     "tropical beach", "colorful abstract", 
-    "underwater coral","street art graffiti", "hot air balloons", "festival colors", "vibrant flowers", "neon car", "technology lights",
-    "sunset mountains", "stained glass", "macro eye", "liquid color"
+    "underwater coral", "hot air balloons", "festival colors", "vibrant flowers", "neon car", "technology lights"
 ]
 
 RESOLUCIONES = {
