@@ -2,26 +2,31 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
+/**
+ * Procesamiento Concurrente de Imágenes (Batch).
+ * Requerimientos cumplidos:
+ * 1. Lee carpeta 'dataset_browser'.
+ * 2. Guarda en 'imagenes_grises_concurrente'.
+ * 3. Mide tiempo individual por imagen y tiempo total.
+ */
 public class ImagenesHilos {
 
     public static void main(String[] args) {
         try {
-            // --- 1. CONFIGURACIÓN DE CARPETAS (Igual que en el secuencial) ---
+            // --- CONFIGURACIÓN DE RUTAS ---
             File carpetaEntrada = new File("dataset_browser");
-            File carpetaSalida = new File("imagenes_grises_concurrente"); // Nombre solicitado en el PDF
+            File carpetaSalida = new File("imagenes_grises_concurrente");
 
-            // Crear carpeta de salida si no existe
             if (!carpetaSalida.exists()) {
                 carpetaSalida.mkdirs();
             }
 
-            // Validar entrada
             if (!carpetaEntrada.exists() || !carpetaEntrada.isDirectory()) {
-                System.out.println("Error: No se encuentra la carpeta 'dataset_browser'");
+                System.out.println("Error: No existe la carpeta 'dataset_browser'. Ejecuta primero el script de Python.");
                 return;
             }
 
-            // Obtener imágenes
+            // Filtrar solo imágenes
             File[] archivos = carpetaEntrada.listFiles((dir, name) -> {
                 String lower = name.toLowerCase();
                 return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || 
@@ -29,66 +34,76 @@ public class ImagenesHilos {
             });
 
             if (archivos == null || archivos.length == 0) {
-                System.out.println("No hay imágenes para procesar.");
+                System.out.println("La carpeta está vacía.");
                 return;
             }
 
-            System.out.println("Iniciando procesamiento CONCURRENTE de " + archivos.length + " imágenes.");
-            System.out.println("Estrategia: 4 Hilos por cada imagen (Paralelismo de Datos).");
+            System.out.println("=================================================");
+            System.out.println(" INICIANDO PROCESAMIENTO CONCURRENTE (4 HILOS/IMG) ");
+            System.out.println(" Cantidad de imágenes: " + archivos.length);
+            System.out.println("=================================================\n");
 
-            long inicioTotal = System.nanoTime(); // Cronómetro global
+            // --- CRONÓMETRO GLOBAL (Inicio) ---
+            long tiempoInicioTotal = System.nanoTime();
 
-            // --- 2. BUCLE PARA RECORRER EL DATASET ---
+            // Bucle principal que recorre el dataset
             for (File archivoEntrada : archivos) {
                 try {
+                    // --- CRONÓMETRO INDIVIDUAL (Inicio) ---
+                    long tiempoInicioImagen = System.nanoTime();
+
                     BufferedImage imagen = ImageIO.read(archivoEntrada);
-                    
                     if (imagen == null) continue;
 
                     int altura = imagen.getHeight();
-                    // int ancho = imagen.getWidth(); // No es crítico para dividir filas
-
-                    // --- 3. LÓGICA CONCURRENTE (Tu código original adaptado) ---
-                    int numeroHilos = 4; 
+                    
+                    // --- LOGICA CONCURRENTE ---
+                    int numeroHilos = 4; // Dividimos la imagen en 4 franjas
                     Thread[] hilos = new Thread[numeroHilos];
                     int filasPorHilo = altura / numeroHilos;
                     
-                    // Creamos y lanzamos los hilos para ESTA imagen
+                    // Crear y lanzar los hilos
                     for (int i = 0; i < numeroHilos; i++) {
                         int inicioFila = i * filasPorHilo;
                         int finFila = (i == numeroHilos - 1) ? altura : inicioFila + filasPorHilo;
-
-                        // Usamos tu clase FiltroGris existente
+                        
+                        // Usamos tu clase FiltroGris (Asegúrate de que esté en la misma carpeta)
                         hilos[i] = new Thread(new FiltroGris(imagen, inicioFila, finFila));
                         hilos[i].start();
                     }
 
-                    // Esperamos a que los 4 hilos terminen esta imagen (Barrera)
+                    // Esperar a los hilos (Barrera de Sincronización)
                     for (Thread hilo : hilos) {
                         hilo.join();
                     }
 
-                    // --- 4. GUARDADO DE LA IMAGEN PROCESADA ---
+                    // Guardar imagen resultante
                     String nombreSalida = archivoEntrada.getName().replace(".", "-gris-conc.");
                     File archivoDestino = new File(carpetaSalida, nombreSalida);
-                    
-                    // Guardamos (esto se hace en el hilo principal secuencialmente, el disco es el límite)
                     ImageIO.write(imagen, "jpg", archivoDestino);
-                    
-                    // Opcional: Imprimir progreso para no desesperar
-                    // System.out.println("Procesada: " + archivoDestino.getName());
+
+                    // --- CRONÓMETRO INDIVIDUAL (Fin) ---
+                    long tiempoFinImagen = System.nanoTime();
+                    long duracionImagen = (tiempoFinImagen - tiempoInicioImagen) / 1_000_000; // a ms
+
+                    // IMPRESIÓN INDIVIDUAL
+                    System.out.println(String.format("Imagen: %-30s | Hilos: 4 | Tiempo: %4d ms", 
+                            archivoEntrada.getName(), duracionImagen));
 
                 } catch (Exception e) {
-                    System.out.println("Error en archivo " + archivoEntrada.getName() + ": " + e.getMessage());
+                    System.out.println("Error procesando " + archivoEntrada.getName() + ": " + e.getMessage());
                 }
             }
 
-            long finTotal = System.nanoTime();
-            
-            // --- 5. REPORTE FINAL ---
-            System.out.println("\n--- PROCESAMIENTO CONCURRENTE COMPLETADO ---");
-            System.out.println("Total imágenes: " + archivos.length);
-            System.out.println("Tiempo Total: " + (finTotal - inicioTotal) / 1_000_000 + " ms");
+            // --- CRONÓMETRO GLOBAL (Fin) ---
+            long tiempoFinTotal = System.nanoTime();
+            long duracionTotal = (tiempoFinTotal - tiempoInicioTotal) / 1_000_000; // a ms
+
+            System.out.println("\n=================================================");
+            System.out.println(" PROCESO FINALIZADO");
+            System.out.println(" Tiempo Total de Ejecución: " + duracionTotal + " ms");
+            System.out.println(" Imágenes guardadas en: " + carpetaSalida.getAbsolutePath());
+            System.out.println("=================================================");
 
         } catch (Exception e) {
             e.printStackTrace();
