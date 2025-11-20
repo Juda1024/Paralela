@@ -2,13 +2,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
-/**
- * Procesamiento Concurrente de Imágenes (Batch).
- * Requerimientos cumplidos:
- * 1. Lee carpeta 'dataset_browser'.
- * 2. Guarda en 'imagenes_grises_concurrente'.
- * 3. Mide tiempo individual por imagen y tiempo total.
- */
+
 public class ImagenesHilos {
 
     public static void main(String[] args) {
@@ -58,7 +52,7 @@ public class ImagenesHilos {
                     int altura = imagen.getHeight();
                     
                     // --- LOGICA CONCURRENTE ---
-                    int numeroHilos = 4; // Dividimos la imagen en 4 franjas
+                    int numeroHilos = 8; // Dividimos la imagen en 4 franjas
                     Thread[] hilos = new Thread[numeroHilos];
                     int filasPorHilo = altura / numeroHilos;
                     
