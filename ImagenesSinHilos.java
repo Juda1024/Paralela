@@ -2,62 +2,97 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
-/**
- *
- * @author andrespillajo
- */
 public class ImagenesSinHilos {
 
     public static void main(String[] args) {
         try {
-            // Cargar la imagen desde un archivo
-            File archivoEntrada = new File("C:\\Users\\Hewlett Packard\\Desktop\\Carpeta General\\ESPE U\\4 Nivel\\Comp_Paralela\\Escala_Grises\\SinHilos\\Goats-maximili.jpg"); // Cambia "imagen.png" por la ruta de tu imagen
-            BufferedImage imagen = ImageIO.read(archivoEntrada);
+            File carpetaEntrada = new File("dataset_browser");
+            File carpetaSalida = new File("Imagenes_grises_secuencial");
             
-            if (imagen == null) {
-                System.out.println("No se pudo cargar la imagen. Verifica la ruta y el formato.");
+            if (!carpetaSalida.exists()) {
+                carpetaSalida.mkdirs();
+            }
+            
+            if (!carpetaEntrada.exists() || !carpetaEntrada.isDirectory()) {
+                System.out.println("Error: No se encuentra la carpeta 'dataset_browser'");
                 return;
             }
             
-            // Obtener dimensiones de la imagen
-            int ancho = imagen.getWidth();
-            int alto = imagen.getHeight();
+            // Obtener lista de archivos de imagen
+            File[] archivos = carpetaEntrada.listFiles((dir, name) -> {
+                String lower = name.toLowerCase();
+                return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || 
+                       lower.endsWith(".png") || lower.endsWith(".bmp");
+            });
             
-            System.out.println("Procesando imagen de " + ancho + "x" + alto + " píxeles.");
-
-            long inicio = System.nanoTime(); // Registrar tiempo inicial
+            if (archivos == null || archivos.length == 0) {
+                System.out.println("No se encontraron imagenes en la carpeta 'dataset_browser'");
+                return;
+            }
             
-            // Recorrer cada píxel de la imagen
-            for (int y = 0; y < alto; y++) {
-                for (int x = 0; x < ancho; x++) {
-                    // Obtener el valor ARGB del píxel
-                    int pixel = imagen.getRGB(x, y);
+            System.out.println("Encontradas " + archivos.length + " imagenes para procesar");
+            
+            long inicioTotal = System.nanoTime(); // Tiempo total de procesamiento
+            
+            // Procesar cada imagen
+            for (File archivoEntrada : archivos) {
+                try {
+                    System.out.println("\nProcesando: " + archivoEntrada.getName());
+                    
+                    BufferedImage imagen = ImageIO.read(archivoEntrada);
+                    
+                    if (imagen == null) {
+                        System.out.println("No se pudo cargar la imagen: " + archivoEntrada.getName());
+                        continue;
+                    }
+                    
+                    // Obtener dimensiones de la imagen
+                    int ancho = imagen.getWidth();
+                    int alto = imagen.getHeight();
+                    
+                    System.out.println("Dimensiones: " + ancho + "x" + alto + " pixeles");
 
-                    // Extraer componentes de color
-                    int alpha = (pixel >> 24) & 0xff; // Componente Alpha
-                    int red = (pixel >> 16) & 0xff;   // Componente Rojo
-                    int green = (pixel >> 8) & 0xff;  // Componente Verde
-                    int blue = pixel & 0xff;          // Componente Azul
+                    long inicio = System.nanoTime(); 
+                    
+                    
+                    for (int y = 0; y < alto; y++) {
+                        for (int x = 0; x < ancho; x++) {
+                            // Obtener el valor ARGB del píxel
+                            int pixel = imagen.getRGB(x, y);
 
-                    // Calcular el promedio para escala de grises
-                    int gris = (red + green + blue) / 3;
+                            int alpha = (pixel >> 24) & 0xff; 
+                            int red = (pixel >> 16) & 0xff;   
+                            int green = (pixel >> 8) & 0xff;  
+                            int blue = pixel & 0xff;          
+                            int gris = (red + green + blue) / 3;
 
-                    // Crear el nuevo color en escala de grises
-                    int nuevoPixel = (alpha << 24) | (gris << 16) | (gris << 8) | gris;
+    
+                            int nuevoPixel = (alpha << 24) | (gris << 16) | (gris << 8) | gris;
 
-                    // Asignar el nuevo color al píxel
-                    imagen.setRGB(x, y, nuevoPixel);
+                            // Asignar el nuevo color al píxel
+                            imagen.setRGB(x, y, nuevoPixel);
+                        }
+                    }
+                    
+                    long fin = System.nanoTime(); // Tiempo final por imagen
+
+                    // Guardar la imagen resultante
+                    String nombreSalida = archivoEntrada.getName().replace(".", "-gris.");
+                    File archivoSalida = new File(carpetaSalida, nombreSalida);
+                    ImageIO.write(imagen, "jpg", archivoSalida);
+
+                    System.out.println("Imagen convertida: " + archivoSalida.getName());
+                    System.out.println("Tiempo de esta imagen: " + (fin - inicio) / 1_000_000 + " ms");
+                    
+                } catch (Exception e) {
+                    System.out.println("Error procesando " + archivoEntrada.getName() + ": " + e.getMessage());
                 }
             }
             
-            long fin = System.nanoTime(); // Registrar tiempo final
-
-            // Guardar la imagen resultante
-            File archivoSalida = new File("C:\\\\Users\\\\Desktop\\\\Carpeta General\\\\ESPE U\\\\4 Nivel\\\\Comp_Paralela\\\\Escala_Grises\\\\SinHilos\\\\Goats-maximili-gris.jpg"); // Cambia "imagen_gris.png" por la ruta de tu imagen
-            ImageIO.write(imagen, "jpg", archivoSalida);
-
-            System.out.println("Imagen convertida a escala de grises y guardada como 'imagen_gris.jpg'.");
-            System.out.println("Tiempo de ejecución: " + (fin - inicio) / 1_000_000 + " ms");
+            long finTotal = System.nanoTime();
+            System.out.println("\n--- PROCESAMIENTO SECUENCIAL COMPLETADO ---");
+            System.out.println("Total de imagenes procesadas: " + archivos.length);
+            System.out.println("Tiempo total SECUENCIAL: " + (finTotal - inicioTotal) / 1_000_000 + " ms");
             
         } catch (Exception e) {
             e.printStackTrace();
