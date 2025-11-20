@@ -53,7 +53,7 @@ public class ImagenesSinHilos {
             long fin = System.nanoTime(); // Registrar tiempo final
 
             // Guardar la imagen resultante
-            File archivoSalida = new File("C:\\\\Users\\\\Hewlett Packard\\\\Desktop\\\\Carpeta General\\\\ESPE U\\\\4 Nivel\\\\Comp_Paralela\\\\Escala_Grises\\\\SinHilos\\\\Goats-maximili-gris.jpg"); // Cambia "imagen_gris.png" por la ruta de tu imagen
+            File archivoSalida = new File("C:\\\\Users\\\\Desktop\\\\Carpeta General\\\\ESPE U\\\\4 Nivel\\\\Comp_Paralela\\\\Escala_Grises\\\\SinHilos\\\\Goats-maximili-gris.jpg"); // Cambia "imagen_gris.png" por la ruta de tu imagen
             ImageIO.write(imagen, "jpg", archivoSalida);
 
             System.out.println("Imagen convertida a escala de grises y guardada como 'imagen_gris.jpg'.");
