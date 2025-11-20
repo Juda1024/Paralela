@@ -2,10 +2,14 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
+<<<<<<< HEAD
 /**
  * Procesamiento Concurrente de un Dataset completo.
  * Aplica la lógica de hilos (FiltroGris) a cada imagen de la carpeta.
  */
+=======
+
+>>>>>>> 3a1eef2fc2fe95430e5850a1fcc6711cb0cd8ea1
 public class ImagenesHilos {
 
     public static void main(String[] args) {

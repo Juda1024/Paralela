@@ -21,8 +21,7 @@ public class ImagenesSinHilos {
             // Obtener lista de archivos de imagen
             File[] archivos = carpetaEntrada.listFiles((dir, name) -> {
                 String lower = name.toLowerCase();
-                return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || 
-                       lower.endsWith(".png") || lower.endsWith(".bmp");
+                return lower.endsWith(".jpg");
             });
             
             if (archivos == null || archivos.length == 0) {
@@ -60,13 +59,15 @@ public class ImagenesSinHilos {
                             // Obtener el valor ARGB del píxel
                             int pixel = imagen.getRGB(x, y);
 
-                            int alpha = (pixel >> 24) & 0xff; 
-                            int red = (pixel >> 16) & 0xff;   
-                            int green = (pixel >> 8) & 0xff;  
-                            int blue = pixel & 0xff;          
+                            int alpha = (pixel >> 24) & 0xff; //Componente Alpha
+                            int red = (pixel >> 16) & 0xff;   //Componente Rojo
+                            int green = (pixel >> 8) & 0xff;  //Componente Verde
+                            int blue = pixel & 0xff;          //Componente Azul
+                            
+                            //Promedio para escala de grises
                             int gris = (red + green + blue) / 3;
 
-    
+                            // Crear el nuevo color en escala de grises
                             int nuevoPixel = (alpha << 24) | (gris << 16) | (gris << 8) | gris;
 
                             // Asignar el nuevo color al píxel
@@ -89,7 +90,7 @@ public class ImagenesSinHilos {
                 }
             }
             
-            long finTotal = System.nanoTime();
+            long finTotal = System.nanoTime();//Tiempo final del proceso}
             System.out.println("\n--- PROCESAMIENTO SECUENCIAL COMPLETADO ---");
             System.out.println("Total de imagenes procesadas: " + archivos.length);
             System.out.println("Tiempo total SECUENCIAL: " + (finTotal - inicioTotal) / 1_000_000 + " ms");
