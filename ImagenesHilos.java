@@ -2,10 +2,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
-/**
- *
- * @author andrespillajo
- */
+
 public class ImagenesHilos {
 
     public static void main(String[] args) {
