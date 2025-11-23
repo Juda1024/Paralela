@@ -60,8 +60,7 @@ public class ImagenesHilos {
                     for (int i = 0; i < numeroHilos; i++) {
                         int inicioFila = i * filasPorHilo;
                         int finFila = (i == numeroHilos - 1) ? altura : inicioFila + filasPorHilo;
-                        
-                        // Usamos tu clase FiltroGris (Asegúrate de que esté en la misma carpeta)
+                
                         hilos[i] = new Thread(new FiltroGris(imagen, inicioFila, finFila));
                         hilos[i].start();
                     }
